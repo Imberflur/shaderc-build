@@ -13,8 +13,10 @@ jobs:
             git submodule init
             git submodule update --depth 1
             export MACOSX_DEPLOYMENT_TARGET=10.9
-            cargo build --release --features build-from-source
-            find ./ -iname "lib" | grep "/out/lib" | xargs mv -t ./
+            #cargo build --release --features build-from-source
+            mkdir -p test/comma/out/lib/stuff
+            lib_dir=$(find ./ -iname "lib" | grep "/out/lib")
+            mv $lib_dir ./
             tar -czf lib.tar.gz ./lib
 
             # Upload artifact
@@ -46,7 +48,8 @@ jobs:
           git submodule update --depth 1
           export MACOSX_DEPLOYMENT_TARGET=10.9
           cargo build --release --features build-from-source
-          find ./ -iname "lib" | grep "/out/lib" | xargs mv -t ./
+          lib_dir=$(find ./ -iname "lib" | grep "/out/lib")
+          mv $lib_dir ./
           tar -czf lib.tar.gz ./lib
       - name: release
         uses: actions/create-release@v1
