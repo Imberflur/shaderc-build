@@ -1,0 +1,69 @@
+name: test
+
+on: [workflow_dispatch]
+
+jobs:
+  test:
+    runs-on: macos-10.15 
+      steps:
+        - uses: dtolnay/rust-toolchain@stable
+        - run: |
+            git clone --depth 1 https://github.com/google/shaderc-rs.git --branch v0.7.2
+            cd shaderc-rs/shaderc-sys
+            git submodule init
+            git submodule update --depth 1
+            export MACOSX_DEPLOYMENT_TARGET=10.9
+            cargo build --release --features build-from-source
+            find ./ -iname "lib" | grep "/out/lib" | xargs mv -t ./
+            tar -czf lib.tar.gz ./lib
+
+            # Upload artifact
+        - uses: actions/upload-artifact@v2 
+          with:
+              name: my-artifact
+              path: lib.tar.gz
+
+
+name: release
+
+# run on any tag push
+on:
+  push:
+    tags:
+      - '*'
+              
+jobs: 
+  build_release:
+    name: build_release
+    runs-on: macos-10.15 
+    steps:
+      - name: build 
+        uses: dtolnay/rust-toolchain@stable
+        run: |
+          git clone --depth 1 https://github.com/google/shaderc-rs.git --branch v0.7.2
+          cd shaderc-rs/shaderc-sys
+          git submodule init
+          git submodule update --depth 1
+          export MACOSX_DEPLOYMENT_TARGET=10.9
+          cargo build --release --features build-from-source
+          find ./ -iname "lib" | grep "/out/lib" | xargs mv -t ./
+          tar -czf lib.tar.gz ./lib
+      - name: release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: false
+          release_name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: upload darwin artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: lib.tar.gz
+          asset_name: lib.darwin-amd64.tar.gz
+          asset_content_type: application/gzip
